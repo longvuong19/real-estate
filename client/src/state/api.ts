@@ -8,6 +8,7 @@ import {
   Property,
   Tenant,
 } from "@/types/prismaTypes";
+import { createNewUserInDatabase } from "@/lib/utils";
 
 export const api = createApi({
   baseQuery: fetchBaseQuery({
@@ -34,12 +35,24 @@ export const api = createApi({
 
           const endpoint =
             userRole === "manager"
-              ? `/manager/${user.userId}`
-              : `/tenant/${user.userId}`;
+              ? `/managers/${user.userId}`
+              : `/tenants/${user.userId}`;
 
           let userDetailsResponse = await fetchWithBQ(endpoint);
 
-          // If user does not exist, create a new one
+          // if user doesn't exist, create new user
+          if (
+            userDetailsResponse.error &&
+            userDetailsResponse.error.status === 404
+          ) {
+            userDetailsResponse = await createNewUserInDatabase(
+              user,
+              idToken,
+              userRole,
+              fetchWithBQ
+            );
+          }
+
           return {
             data: {
               cognitoInfo: { ...user },
@@ -48,11 +61,11 @@ export const api = createApi({
             },
           };
         } catch (error: any) {
-          return { error: error.message || "Could not fetch user data." };
+          return { error: error.message || "Could not fetch user data" };
         }
       },
     }),
   }),
 });
 
-export const {} = api;
+export const { useGetAuthUserQuery } = api;
